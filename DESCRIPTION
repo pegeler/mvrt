@@ -1,0 +1,25 @@
+Package: mvrt
+Title: Generate multivariate t-distributed random data
+Version: 0.0.0
+Authors@R: person("Paul", "Egeler", email = "paulegeler@gmail.com", role = c("aut", "cre"))
+Description: Generate multivariate t-distributed random data.
+Depends: R (>= 3.4.1)
+License: GPL-2 | GPL-3
+Encoding: UTF-8
+LazyData: true
+Suggests: 
+    knitr,
+    rmarkdown,
+    MASS,
+    microbenchmark,
+    mvtnorm
+VignetteBuilder: knitr
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
+Imports: 
+    Rcpp,
+    RcppArmadillo
+RoxygenNote: 6.0.1
+URL: http://github.com/pegeler/mvrt
+BugReports: http://github.com/pegeler/mvrt/issues

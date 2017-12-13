@@ -1,0 +1,366 @@
+---
+title: "Exploring methods to create a multivariate t-distributed random matrix"
+author: "Paul W. Egeler, MS, GStat"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+## Objective
+
+The objective of this R Notebook is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as `MASS::mvrnorm` and `mvtnorm::rmvt`.
+
+The matrices are compared using summary statistics and graphics (histograms). The distributions are assessed for "believability". Methods are also explored for ensuring that the specified correlation/covariance structure is preserved, despite the random process of number generation. Finally, benchmarking is perfromed to determine performance differences.
+
+## Setup
+
+### Defining the data
+
+We will specify the sample n pairs, means, correlation matrix, and variances. The correlation matrix and variances will be used to generate a covariance matrix, which will be used by the random number generator.
+
+```{r}
+n <- 30
+mu <- c(5,4)
+R <- matrix(c(1,.9,.9,1),2,2)
+var <- c(2.5,2)
+
+S <- mvrt::convert_R2S(R, var)
+```
+
+### Defining the multivariate t-distributed random matrix generator functions
+
+First we will define the random number generator functions in R. We will compare the performance of R code with- and without `for`{.r} loops. Well-optimized R code may be sufficiently performant as to not warrant the implementation of a compiled alternative.
+
+```{r}
+# With a for loop
+mvrt_R_a <- function(n, mu, S, df = n - 1) {
+
+  g.t <- t(chol(S))
+
+  bivMat <- matrix(0,nrow = length(mu), ncol = n)
+
+  for (i in seq_len(n)) {
+    bivMat[,i] <- mu + g.t %*% rt(length(mu), df)
+  }
+
+  t(bivMat)
+
+}
+
+# Without a for loop
+mvrt_R_b <- function(n, mu, S, df = n - 1) {
+  
+  g <- chol(S)
+  
+  random_matrix <- matrix(rt(n*length(mu), df),nrow = length(mu))
+  deviation <- t(g) %*% random_matrix
+  
+  t(mu + deviation)
+  
+}
+```
+
+
+### Compiling and loading the C++ mvrt random matrix generator
+
+Next we will load in a function written in C++. The expectation is that the C++ code will be faster than the R code, possibly by several orders of magnitude.
+
+```{r, results='hide', message=FALSE}
+Rcpp::sourceCpp("../src/mvrt.cpp")
+```
+
+The code that was loaded is below.
+
+```{r, echo=FALSE, results="asis"}
+cat("```c\n")
+cat(readLines("../src/mvrt.cpp"), sep = "\n")
+cat("```\n")
+```
+
+### Define our function for getting a distribution of correlation coefficients
+
+This function will take a function and its arguments and run it a specified number of times, performing a correlation on the output and extracting the off-diagonal element. Essentially, we can use this to run each random number generator an arbitrary number of times and get the Pearson's correlation for each pair of vectors created. This can be used to examine the distribution of correlation coefficients that can be expected from the random generation processes. Note the random seed parameter which can be set for reproducibility.
+
+```{r}
+get_cor_dist <- function(FUN, times, ..., seed = 999) {
+  
+  set.seed(seed)
+  
+  FUN <- match.fun(FUN)
+  
+  my_call <- as.call(list(FUN, ...))
+  
+  out <- numeric(times)
+  
+  for (i in seq_len(times)) {
+    
+    out[i] <- cor(eval(my_call))[2]
+    
+  }
+  
+  out
+  
+}
+```
+
+### Generating the distributions of correlation coeffiencts using sever random matrix generators
+
+Using the function above, we will create similar multivariate t-distributed (or normally-distributed) random matrices using several functions.
+
+```{r}
+mvrtRa_dist <-  get_cor_dist(mvrt_R_a, 100, n, mu, S)
+mvrtRb_dist <-  get_cor_dist(mvrt_R_b, 100, n, mu, S)
+mvrt_dist <-    get_cor_dist(mvrt, 100, n, mu, S, n - 1)  
+MASS_dist <-    get_cor_dist(MASS::mvrnorm, 100, n, mu, S)
+mvtnorm_dist <- get_cor_dist(mvtnorm::rmvt, 100, n, S, n - 1)
+```
+
+
+## Analysis
+
+### Checking the algorithm
+
+#### Homogenous outputs
+
+First let's check that our three home-grown functions produce identical results.
+
+```{r}
+if (identical(mvrtRa_dist, mvrt_dist) && identical(mvrtRb_dist, mvrt_dist)) {
+  message("Distributions of correlation coefficients are identical")
+} else {
+  message("Distributions of correlation coefficients are NOT identical")
+}
+
+if (
+  identical(
+    (mvrt_sample <- {set.seed(999); mvrt(n, mu, S, n - 1)}),
+    {set.seed(999); mvrt_R_a(n, mu, S)}
+    ) &&
+  identical(
+    mvrt_sample,
+    {set.seed(999); mvrt_R_b(n, mu, S)}
+    )
+) {
+  message("Random samples generated match")
+} else {
+  message("Random samples generated do NOT match")
+}
+```
+
+It appears that we are successful in that the three functions produce identical output. Therefore, we must only examine one function's output when doing distribution analysis, rather than all three.
+
+#### Inspecting outputted means and variances
+
+Let's run a couple of checks to make sure that the algorithm is at least giving us data with approximately correct means and variances.
+
+```{r}
+# Mean mu
+colMeans(t(sapply(lapply(rep(30,100), mvrt, mu, S, n - 1),colMeans)))
+
+# Mean var
+colMeans(t(sapply(lapply(rep(30,100), mvrt, mu, S, n - 1), apply, 2, var)))
+```
+
+Means are close and variances are just a little higher than those specified in the covariance matrix, which we might expect from a relatively small sample size.
+
+#### An individual sample
+
+Let's pull a single sample of n = 30. We can check the mean, variance, and correlation.
+
+```{r}
+mvrt_sample <- mvrt(n, mu, S, n - 1)
+
+colMeans(mvrt_sample)
+apply(mvrt_sample, 2,var)
+cor(mvrt_sample)
+```
+
+How does a plot of the data look?
+
+```{r}
+plot(mvrt_sample)
+# Regression line
+abline(lm(mvrt_sample[,2] ~ mvrt_sample[,1]), col = "red")
+
+# Center of points
+points(mean(mvrt_sample[,1]), mean(mvrt_sample[,2]), col = "blue", pch = 22)
+```
+
+OK. So we are fairly confident that we are getting the data we requested. Now let's look at how the correlation coefficients are distributed over several simulations.
+
+### Comparing the correlation coefficient distributions of the various functions
+
+```{r}
+# Summary of the distributions
+summary(mvrt_dist)
+summary(MASS_dist)
+summary(mvtnorm_dist)
+
+# Graphical representations
+my_hist <- function (data) {
+  hist(
+    data, 
+    xlim = c(-1,1), 
+    breaks = "fd", 
+    main = paste("Histogram of",deparse(substitute(data))),
+    xlab = deparse(substitute(data))
+  )
+  
+  abline(v = 0.9, col = 'red')
+}
+
+my_hist(mvrt_dist)
+my_hist(MASS_dist)
+my_hist(mvtnorm_dist)
+```
+
+## Guaranteeing outputs are within a specified range
+
+What if we would like to specify that the matrix of values returned is within a reasonable margin to the specified correlation coefficient? This can be done through iterative generation of the random sample with acceptance checks at each step. A matrix norm of the difference in correlation matrices (between generated and specified) may be used as an intuitive check. We may specify that the maximum modulus of the difference between specified and returned correlation matrix elements is below a given threshold.
+
+The determinant may also be used (and is potentially faster). However the norm may be more easily interpreted since the element-wise maximum modulus is a good way for the user to specify an acceptance criterion.
+
+### Choosing the matrix norm over the determinant
+
+Why use the matrix norm rather than the determinant or some other measure? Because it is the most intuitive. The matrix norm is computed several ways. We will use the maximum modulus (absolute value) method, which is equivalent to performing `max(abs())`{.r} on a matrix. This means that in we can specify the maximum devation of any element within the resultant correlation matrix generated by random sample versus the specified. For example, specifying a maximum matrix norm of 0.05 means that the Pearson's correlation generated from outputted values will be within $\pm$ 0.05 of the Pearson's correlation used as the input correlation matrix (as derived form the input covariance matrix).
+
+To demonstrate, we will create a reference correlation matrix and then compare it to a set of contender matrices using the determinant and norm.
+
+```{r}
+# Define a function for making a 2x2 correlation matrix
+make_cor_mat <- function (r) {  
+  out <- matrix(r, 2, 2)
+  diag(out) <- 1
+  out
+}
+
+# A single reference matrix
+R_ref <- make_cor_mat(.9)
+
+# A set of test matrices
+R_test <- lapply(seq(.5,1,.05), make_cor_mat)
+
+# What does the determinant look like for the difference matrices?
+sapply(R_test, function(a,b) det(a - b), R_ref)
+
+# And the matrix norm?
+sapply(R_test, function(a,b) norm(a - b, "m"), R_ref)
+```
+
+The user is more likely to understand how to specify a max norm than a max determinant.
+
+### Iterative function definitions
+
+Below we see two function definitions which perform the same task but implement different programming techniques. The first utilizes recursive function calls, while the second uses a `while`{.r} loop to repeat sample generation until the acceptance criterion is met.
+
+```{r}
+# Using recursive function calls
+mvrt_R_c <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
+ 
+  g <- chol(S)
+ 
+  random_matrix <- matrix(rt(n*length(mu), df),nrow = length(mu))
+  deviation <- t(g) %*% random_matrix
+ 
+  out <- t(mu + deviation)
+ 
+  if (norm(cov2cor(S) - cor(out), type = type.norm) <= max.norm) {
+    return(out)
+  } else {
+    eval(match.call())
+  }
+ 
+}
+
+
+# Using the while loop
+mvrt_R_d <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
+  
+  g.t <- t(chol(S))
+  
+  accept_data <- FALSE
+  
+  R_ref <- cov2cor(S)
+  
+  while (!accept_data) {
+    
+    random_matrix <- matrix(rt(n*length(mu), df),nrow = length(mu))
+    deviation <- g.t %*% random_matrix
+    
+    out <- t(mu + deviation)
+    
+    accept_data <- norm(R_ref - cor(out), type = type.norm) <= max.norm
+      
+  } 
+  
+  out
+  
+}
+
+```
+
+### Checking our work
+
+Now lets see if the distributions tighten up with our new functions. We should now see that the correlation coefficient of each of our randomly generated samples will not stray more than 0.05 from the correlation of the correlation matrix used to specify the covariance structure of the data.
+
+```{r}
+mvrtRc_dist <-  get_cor_dist(mvrt_R_c, 100, n, mu, S)
+mvrtRd_dist <-  get_cor_dist(mvrt_R_d, 100, n, mu, S)
+
+if (identical(mvrtRc_dist, mvrtRd_dist)) {
+  message("Distributions of correlation coefficients are identical")
+} else {
+  message("Distributions of correlation coefficients are NOT identical")
+}
+
+summary(mvrtRc_dist)
+
+my_hist(mvrtRc_dist)
+```
+
+This appears to have worked. Compare with distributions explored in the previous section.
+
+We can also specify a different covariance structure and check again. This demonstrates the usage of the various function definitions we have created for this exercise.
+
+```{r}
+summary(get_cor_dist(mvrt_R_d, 100, n, mu, mvrt::convert_R2S(make_cor_mat(0.2),var)))
+```
+
+Not surprisingly, the correlation coefficients remain within [0.15,0.25].
+
+## Benchmarking
+
+Let's see how the functions compare in speed.
+
+```{r}
+microbenchmark::microbenchmark(
+  mvrt_R_a(n, mu, S),               # 'for' loop
+  mvrt_R_b(n, mu, S),               # Optimized R code
+  mvrt_R_c(n, mu, S),               # Recursive call
+  mvrt_R_d(n, mu, S),               # 'while' loop
+  mvrt(n, mu, S, n - 1),            # C++ code
+  MASS::mvrnorm(n, mu, S),
+  mvtnorm::rmvt(n, S, n - 1) + mu
+)
+```
+
+I know the `::`{.r} operator has a performance cost. It may be interesting to try the benchmarking with loaded packages, too.
+
+```{r}
+MASS_mvrnorm <- MASS::mvrnorm
+mvtnorm_rmvt <- mvtnorm::rmvt
+
+microbenchmark::microbenchmark(
+  MASS::mvrnorm(n, mu, S),
+  MASS_mvrnorm(n, mu, S),
+  mvtnorm::rmvt(n, S, n - 1) + mu,
+  mvtnorm_rmvt(n, S, n - 1) + mu
+)
+```
+
+## Conclusion
+
+Clearly, rolling your own C++ code is superior. But given the performance gain from removing the `for`{.r} loop from our original R function, optimization of R code cannot be underestimated. Given that the well-written R code is comparably performant within an order of magnitude, the switch to C++ is likely not worth the additional effort in this case.
