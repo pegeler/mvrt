@@ -1,5 +1,6 @@
 Package: mvrt
 Title: Generate multivariate t-distributed random data
+Date: 2017-12-12
 Version: 0.0.0
 Authors@R: person("Paul", "Egeler", email = "paulegeler@gmail.com", role = c("aut", "cre"))
 Description: Generate multivariate t-distributed random data.
@@ -19,7 +20,8 @@ LinkingTo:
     RcppArmadillo
 Imports: 
     Rcpp,
-    RcppArmadillo
+    RcppArmadillo,
+    stats
 RoxygenNote: 6.0.1
 URL: http://github.com/pegeler/mvrt
 BugReports: http://github.com/pegeler/mvrt/issues
