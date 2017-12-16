@@ -9,6 +9,10 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
+```{r, include=FALSE}
+knitr::opts_chunk$set(fig.width = 6, fig.height = 4, fig.align = 'center')
+```
+
 ## Objective
 
 The objective of this R Notebook is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as `MASS::mvrnorm` and `mvtnorm::rmvt`.
