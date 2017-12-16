@@ -4,7 +4,8 @@
 \alias{mvrtR}
 \title{Create a multivariate t-distributed random matrix}
 \usage{
-mvrtR(n, mu, S, df = n - 1, max.norm = Inf, type.norm = "m")
+mvrtR(n, mu, S, df = n - 1, max_norm = 2, max_iterations = 1000,
+  type_norm = "m")
 }
 \arguments{
 \item{n}{Number of observations}
@@ -15,9 +16,12 @@ mvrtR(n, mu, S, df = n - 1, max.norm = Inf, type.norm = "m")
 
 \item{df}{Degrees of freedom}
 
-\item{max.norm}{Maximum matrix norm}
+\item{max_norm}{Maximum matrix norm}
 
-\item{type.norm}{Type of matrix norm passed to \code{\link[base]{norm}}}
+\item{max_iterations}{Maximum number of iterations for the loop to search
+for a matrix meeting \code{max_norm} criterion.}
+
+\item{type_norm}{Type of matrix norm passed to \code{\link[base]{norm}}}
 }
 \description{
 Create a multivariate t-distributed random matrix

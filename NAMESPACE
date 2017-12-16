@@ -3,6 +3,7 @@
 export(convert_R2S)
 export(make_cor_mat)
 export(mvrt)
+export(mvrt2)
 export(mvrtR)
 importFrom(Rcpp,sourceCpp)
 importFrom(stats,cor)
