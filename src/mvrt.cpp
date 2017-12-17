@@ -9,14 +9,16 @@ using namespace Rcpp;
 arma::mat mvrt(int n, arma::vec mu, arma::mat S, int df=1)
 {
 
-  arma::mat x(mu.size(), n);
+  // Cholesky decomp and transpose covariance matrix
   arma::mat g = chol(S).t();
 
-  for (int i=0; i < n; i++)
-  {
-    arma::vec rand = as<arma::vec>(rt(mu.size(),df));
-    x.col(i) = mu + g * rand;
-  }
+  // Generate the random data
+  arma::vec x_vec = as< arma::vec >( rt(mu.size() * n, df) );
+  arma::mat x = arma::mat( (const double*)x_vec.begin(), mu.size(), n );
+
+  // Give the random data covariance structure and add mean offset
+  x = g * x;
+  x.each_col() += mu;
 
   return x.t();
 }

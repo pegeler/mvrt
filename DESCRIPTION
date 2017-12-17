@@ -1,7 +1,7 @@
 Package: mvrt
 Title: Generate multivariate t-distributed random data
-Date: 2017-12-16
-Version: 0.1.0
+Date: 2017-12-17
+Version: 0.2.0
 Authors@R: person("Paul", "Egeler", email = "paulegeler@gmail.com", role = c("aut", "cre"))
 Description: Generate multivariate t-distributed random data.
 Depends: R (>= 3.4.1)

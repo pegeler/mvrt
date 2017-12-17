@@ -12,7 +12,7 @@
 
 <meta name="author" content="Paul W. Egeler, MS, GStat" />
 
-<meta name="date" content="2017-12-15" />
+<meta name="date" content="2017-12-17" />
 
 <title>Exploring methods to create a multivariate t-distributed random matrix</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Exploring methods to create a multivariate t-distributed random matrix</h1>
 <h4 class="author"><em>Paul W. Egeler, MS, GStat</em></h4>
-<h4 class="date"><em>2017-12-15</em></h4>
+<h4 class="date"><em>2017-12-17</em></h4>
 
 
 
@@ -131,25 +131,22 @@ mvrt_R_b &lt;-<span class="st"> </span>function(n, mu, S, <span class="dt">df =<
 
 using namespace Rcpp;
 
-<span class="co">//' Create a multivariate t-distributed random matrix</span>
-<span class="co">//'</span>
-<span class="co">//' @param n Number of observations</span>
-<span class="co">//' @param mu Vector of sample means</span>
-<span class="co">//' @param S Covariance matrix</span>
-<span class="co">//' @param df Degrees of freedom</span>
+<span class="co">//' @rdname mvrt</span>
 <span class="co">//' @export</span>
 <span class="co">// [[Rcpp::export]]</span>
 arma::mat mvrt(<span class="dt">int</span> n, arma::vec mu, arma::mat S, <span class="dt">int</span> df=<span class="dv">1</span>)
 {
 
-  arma::mat x(mu.size(), n);
+  <span class="co">// Cholesky decomp and transpose covariance matrix</span>
   arma::mat g = chol(S).t();
 
-  <span class="kw">for</span> (<span class="dt">int</span> i=<span class="dv">0</span>; i &lt; n; i++)
-  {
-    arma::vec rand = as&lt;arma::vec&gt;(rt(mu.size(),df));
-    x.col(i) = mu + g * rand;
-  }
+  <span class="co">// Generate the random data</span>
+  arma::vec x_vec = as&lt; arma::vec &gt;( rt(mu.size() * n, df) );
+  arma::mat x = arma::mat( (<span class="dt">const</span> <span class="dt">double</span>*)x_vec.begin(), mu.size(), n );
+
+  <span class="co">// Give the random data covariance structure and add mean offset</span>
+  x = g * x;
+  x.each_col() += mu;
 
   <span class="kw">return</span> x.t();
 }</code></pre></div>
@@ -317,7 +314,7 @@ R_test &lt;-<span class="st"> </span><span class="kw">lapply</span>(<span class=
 </div>
 <div id="iterative-function-definitions" class="section level3">
 <h3>Iterative function definitions</h3>
-<p>Below we see two function definitions which perform the same task but implement different programming techniques. The first utilizes recursive function calls, while the second uses a <code class="sourceCode r">while</code> loop to repeat sample generation until the acceptance criterion is met.</p>
+<p>Below we see two function definitions which perform the same task but implement different programming techniques. The first utilizes recursive function calls, while the second uses a <code class="sourceCode r">for</code> loop to repeat sample generation until the acceptance criterion is met.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Using recursive function calls</span>
 mvrt_R_c &lt;-<span class="st"> </span>function(n, mu, S, <span class="dt">df =</span> n -<span class="st"> </span><span class="dv">1</span>, <span class="dt">max.norm =</span> <span class="fl">0.05</span>, <span class="dt">type.norm =</span> <span class="st">&quot;m&quot;</span>) {
  
@@ -337,28 +334,89 @@ mvrt_R_c &lt;-<span class="st"> </span>function(n, mu, S, <span class="dt">df =<
 }
 
 
-<span class="co"># Using the while loop</span>
-mvrt_R_d &lt;-<span class="st"> </span>function(n, mu, S, <span class="dt">df =</span> n -<span class="st"> </span><span class="dv">1</span>, <span class="dt">max.norm =</span> <span class="fl">0.05</span>, <span class="dt">type.norm =</span> <span class="st">&quot;m&quot;</span>) {
-  
+<span class="co"># Using the for loop</span>
+mvrt_R_d &lt;-<span class="st"> </span>function(
+  n,
+  mu,
+  S,
+  <span class="dt">df =</span> n -<span class="st"> </span><span class="dv">1</span>,
+  <span class="dt">max_norm =</span> <span class="fl">0.05</span>,
+  <span class="dt">max_iterations =</span> <span class="dv">1000</span>,
+  <span class="dt">type_norm =</span> <span class="st">&quot;m&quot;</span>)
+{
+
   g.t &lt;-<span class="st"> </span><span class="kw">t</span>(<span class="kw">chol</span>(S))
-  
-  accept_data &lt;-<span class="st"> </span><span class="ot">FALSE</span>
-  
+
   R_ref &lt;-<span class="st"> </span><span class="kw">cov2cor</span>(S)
-  
-  while (!accept_data) {
-    
+
+  for (iterations in <span class="kw">seq_len</span>(max_iterations)) {
+
     random_matrix &lt;-<span class="st"> </span><span class="kw">matrix</span>(<span class="kw">rt</span>(n*<span class="kw">length</span>(mu), df),<span class="dt">nrow =</span> <span class="kw">length</span>(mu))
     deviation &lt;-<span class="st"> </span>g.t %*%<span class="st"> </span>random_matrix
-    
-    out &lt;-<span class="st"> </span><span class="kw">t</span>(mu +<span class="st"> </span>deviation)
-    
-    accept_data &lt;-<span class="st"> </span><span class="kw">norm</span>(R_ref -<span class="st"> </span><span class="kw">cor</span>(out), <span class="dt">type =</span> type.norm) &lt;=<span class="st"> </span>max.norm
-      
-  } 
-  
-  out
-  
+
+    if (<span class="kw">norm</span>(R_ref -<span class="st"> </span><span class="kw">cor</span>(<span class="kw">t</span>(mu +<span class="st"> </span>deviation)), <span class="dt">type =</span> type_norm) &lt;=<span class="st"> </span>max_norm)
+      <span class="kw">return</span>(<span class="kw">t</span>(mu +<span class="st"> </span>deviation))
+
+  }
+
+  <span class="kw">stop</span>(
+    <span class="st">&quot;Correlation structure with max norm of &quot;</span>, max_norm,
+    <span class="st">&quot; was not obtained in &quot;</span>, max_iterations, <span class="st">&quot; iterations&quot;</span>
+    )
+
+}</code></pre></div>
+<p>We may also include a <code>C++</code> function to achieve this.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">Rcpp::<span class="kw">sourceCpp</span>(<span class="st">&quot;../src/mvrt2.cpp&quot;</span>)</code></pre></div>
+<p>The code that was loaded is below.</p>
+<div class="sourceCode"><pre class="sourceCode c"><code class="sourceCode c"><span class="ot">#include &lt;RcppArmadillo.h&gt;</span>
+<span class="co">// [[Rcpp::depends(RcppArmadillo)]]</span>
+
+using namespace Rcpp;
+
+<span class="co">//' @rdname mvrt</span>
+<span class="co">//' @export</span>
+<span class="co">// [[Rcpp::export]]</span>
+arma::mat mvrt2(
+    <span class="dt">int</span> n,
+    arma::vec mu,
+    arma::mat S,
+    <span class="dt">int</span> df=<span class="dv">1</span>,
+    <span class="dt">double</span> max_norm=<span class="dv">2</span>,
+    <span class="dt">int</span> max_iterations=<span class="dv">1000</span>
+  )
+{
+
+  <span class="co">// Cholesky decomp and transpose covariance matrix</span>
+  arma::mat g = chol(S).t();
+
+  <span class="co">// Get correlation matrix of user-input S matrix</span>
+  arma::mat V_sqrt_inv = diagmat(<span class="dv">1</span> / sqrt(S.diag()));
+  arma::mat target_cor = V_sqrt_inv * S * V_sqrt_inv;
+
+  <span class="kw">for</span> (<span class="dt">int</span> iteration=<span class="dv">0</span>; iteration &lt; max_iterations; iteration++)
+  {
+
+    <span class="co">// Generate the random data</span>
+    arma::vec x_vec = as&lt; arma::vec &gt;( rt(mu.size() * n, df) );
+    arma::mat x = arma::mat( (<span class="dt">const</span> <span class="dt">double</span>*)x_vec.begin(), mu.size(), n );
+
+    <span class="co">// Give the random data covariance structure and add mean offset</span>
+    x = g * x;
+    x.each_col() += mu;
+
+    <span class="co">// Compare to target and retrun if meets specification</span>
+    arma::mat diff_matrix = abs(cor(x.t()) - target_cor);
+
+    <span class="kw">if</span> (diff_matrix.max() &lt;= max_norm) <span class="kw">return</span> x.t();
+
+  }
+
+  stop(
+    <span class="st">&quot;Did not generate matrix with max norm of %f in %i iterations&quot;</span>,
+    max_norm,
+    max_iterations
+  );
+
 }</code></pre></div>
 </div>
 <div id="checking-our-work" class="section level3">
@@ -366,8 +424,9 @@ mvrt_R_d &lt;-<span class="st"> </span>function(n, mu, S, <span class="dt">df =<
 <p>Now lets see if the distributions tighten up with our new functions. We should now see that the correlation coefficient of each of our randomly generated samples will not stray more than 0.05 from the correlation of the correlation matrix used to specify the covariance structure of the data.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">mvrtRc_dist &lt;-<span class="st">  </span><span class="kw">get_cor_dist</span>(mvrt_R_c, <span class="dv">100</span>, n, mu, S)
 mvrtRd_dist &lt;-<span class="st">  </span><span class="kw">get_cor_dist</span>(mvrt_R_d, <span class="dv">100</span>, n, mu, S)
+mvrt2_dist &lt;-<span class="st">   </span><span class="kw">get_cor_dist</span>(mvrt2,    <span class="dv">100</span>, n, mu, S, n -<span class="st"> </span><span class="dv">1</span>, <span class="fl">0.05</span>)
 
-if (<span class="kw">identical</span>(mvrtRc_dist, mvrtRd_dist)) {
+if (<span class="kw">identical</span>(mvrtRc_dist, mvrtRd_dist) &amp;&amp;<span class="st"> </span><span class="kw">identical</span>(mvrtRc_dist, mvrt2_dist)) {
   <span class="kw">message</span>(<span class="st">&quot;Distributions of correlation coefficients are identical&quot;</span>)
 } else {
   <span class="kw">message</span>(<span class="st">&quot;Distributions of correlation coefficients are NOT identical&quot;</span>)
@@ -390,32 +449,40 @@ if (<span class="kw">identical</span>(mvrtRc_dist, mvrtRd_dist)) {
 <h2>Benchmarking</h2>
 <p>Let’s see how the functions compare in speed.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">microbenchmark::<span class="kw">microbenchmark</span>(
+  <span class="co"># No data checks</span>
   <span class="kw">mvrt_R_a</span>(n, mu, S),               <span class="co"># 'for' loop</span>
   <span class="kw">mvrt_R_b</span>(n, mu, S),               <span class="co"># Optimized R code</span>
-  <span class="kw">mvrt_R_c</span>(n, mu, S),               <span class="co"># Recursive call</span>
-  <span class="kw">mvrt_R_d</span>(n, mu, S),               <span class="co"># 'while' loop</span>
   <span class="kw">mvrt</span>(n, mu, S, n -<span class="st"> </span><span class="dv">1</span>),            <span class="co"># C++ code</span>
+  
+  <span class="co"># Iterative checking</span>
+  <span class="kw">mvrt_R_c</span>(n, mu, S),               <span class="co"># Recursive call</span>
+  <span class="kw">mvrt_R_d</span>(n, mu, S),               <span class="co"># 'for' loop</span>
+  <span class="kw">mvrt2</span>(n, mu, S, n -<span class="st"> </span><span class="dv">1</span>, <span class="fl">0.05</span>),     <span class="co"># C++ code</span>
+  
+  <span class="co"># Available packages on CRAN</span>
   MASS::<span class="kw">mvrnorm</span>(n, mu, S),
   mvtnorm::<span class="kw">rmvt</span>(n, S, n -<span class="st"> </span><span class="dv">1</span>) +<span class="st"> </span>mu
 )</code></pre></div>
 <pre><code>## Unit: microseconds
 ##                             expr     min       lq      mean   median
-##               mvrt_R_a(n, mu, S)  74.551  84.7595 132.28945  90.0660
-##               mvrt_R_b(n, mu, S)  21.408  25.4215  28.97987  27.7405
-##               mvrt_R_c(n, mu, S)  50.696  57.5840  78.93567  65.2525
-##               mvrt_R_d(n, mu, S)  51.878  58.1290  72.39276  65.4455
-##            mvrt(n, mu, S, n - 1)  11.293  14.9160  16.54268  15.6930
-##          MASS::mvrnorm(n, mu, S)  52.309  65.6370  71.67902  69.6740
-##  mvtnorm::rmvt(n, S, n - 1) + mu 207.869 220.9355 244.04050 228.7905
+##               mvrt_R_a(n, mu, S)  72.570  78.3200 106.16488  82.5785
+##               mvrt_R_b(n, mu, S)  20.546  24.0135  26.89605  25.6370
+##            mvrt(n, mu, S, n - 1)   8.897  11.7500  13.10278  13.0020
+##               mvrt_R_c(n, mu, S)  47.580  54.8570  70.24403  61.3615
+##               mvrt_R_d(n, mu, S)  52.236  59.5345  72.35570  66.8210
+##     mvrt2(n, mu, S, n - 1, 0.05)  10.007  13.9315  16.23478  15.5440
+##          MASS::mvrnorm(n, mu, S)  51.541  63.1205  67.50444  66.7315
+##  mvtnorm::rmvt(n, S, n - 1) + mu 203.019 215.8730 227.61580 222.7270
 ##        uq      max neval
-##  100.9095 4063.835   100
-##   30.4800   80.643   100
-##   83.5285  248.396   100
-##   77.6090  244.371   100
-##   16.9975   55.833   100
-##   72.2360  125.838   100
-##  263.8370  455.006   100</code></pre>
-<p>I know the <code class="sourceCode r">::</code> operator has a performance cost. It may be interesting to try the benchmarking with loaded packages, too.</p>
+##   86.5705 2373.894   100
+##   28.5985  103.342   100
+##   14.1205   23.531   100
+##   67.5500  170.584   100
+##   72.9505  191.947   100
+##   17.8855   30.493   100
+##   70.0515  126.929   100
+##  230.3700  471.150   100</code></pre>
+<p>I know the <code class="sourceCode r">::</code> operator has a performance cost for those CRAN packages. It may be interesting to try the benchmarking with loaded packages, too.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">MASS_mvrnorm &lt;-<span class="st"> </span>MASS::mvrnorm
 mvtnorm_rmvt &lt;-<span class="st"> </span>mvtnorm::rmvt
 
@@ -427,15 +494,15 @@ microbenchmark::<span class="kw">microbenchmark</span>(
 )</code></pre></div>
 <pre><code>## Unit: microseconds
 ##                             expr     min       lq      mean   median
-##          MASS::mvrnorm(n, mu, S)  51.444  57.4750  62.27653  62.7695
-##           MASS_mvrnorm(n, mu, S)  44.426  49.3110  53.70057  54.2005
-##  mvtnorm::rmvt(n, S, n - 1) + mu 202.499 209.2785 216.22782 217.9435
-##   mvtnorm_rmvt(n, S, n - 1) + mu 192.397 199.2625 207.20084 205.2855
+##          MASS::mvrnorm(n, mu, S)  52.508  58.3250  66.41196  63.4470
+##           MASS_mvrnorm(n, mu, S)  42.937  50.4095  55.57192  54.9935
+##  mvtnorm::rmvt(n, S, n - 1) + mu 196.140 207.3570 222.92508 214.2455
+##   mvtnorm_rmvt(n, S, n - 1) + mu 188.819 201.4795 211.88244 206.8100
 ##        uq     max neval
-##   66.9870  92.784   100
-##   57.9010  63.757   100
-##  220.7645 240.423   100
-##  211.2955 378.268   100</code></pre>
+##   68.1545 148.104   100
+##   58.0435  82.021   100
+##  223.0565 473.801   100
+##  212.0650 388.085   100</code></pre>
 </div>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>

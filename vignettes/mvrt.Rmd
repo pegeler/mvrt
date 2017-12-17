@@ -258,7 +258,7 @@ The user is more likely to understand how to specify a max norm than a max deter
 
 ### Iterative function definitions
 
-Below we see two function definitions which perform the same task but implement different programming techniques. The first utilizes recursive function calls, while the second uses a `while`{.r} loop to repeat sample generation until the acceptance criterion is met.
+Below we see two function definitions which perform the same task but implement different programming techniques. The first utilizes recursive function calls, while the second uses a `for`{.r} loop to repeat sample generation until the acceptance criterion is met.
 
 ```{r}
 # Using recursive function calls
@@ -280,30 +280,53 @@ mvrt_R_c <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
 }
 
 
-# Using the while loop
-mvrt_R_d <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
-  
+# Using the for loop
+mvrt_R_d <- function(
+  n,
+  mu,
+  S,
+  df = n - 1,
+  max_norm = 0.05,
+  max_iterations = 1000,
+  type_norm = "m")
+{
+
   g.t <- t(chol(S))
-  
-  accept_data <- FALSE
-  
+
   R_ref <- cov2cor(S)
-  
-  while (!accept_data) {
-    
+
+  for (iterations in seq_len(max_iterations)) {
+
     random_matrix <- matrix(rt(n*length(mu), df),nrow = length(mu))
     deviation <- g.t %*% random_matrix
-    
-    out <- t(mu + deviation)
-    
-    accept_data <- norm(R_ref - cor(out), type = type.norm) <= max.norm
-      
-  } 
-  
-  out
-  
+
+    if (norm(R_ref - cor(t(mu + deviation)), type = type_norm) <= max_norm)
+      return(t(mu + deviation))
+
+  }
+
+  stop(
+    "Correlation structure with max norm of ", max_norm,
+    " was not obtained in ", max_iterations, " iterations"
+    )
+
 }
 
+
+```
+
+We may also include a `C++` function to achieve this.
+
+```{r, results='hide', message=FALSE}
+Rcpp::sourceCpp("../src/mvrt2.cpp")
+```
+
+The code that was loaded is below.
+
+```{r, echo=FALSE, results="asis"}
+cat("```c\n")
+cat(readLines("../src/mvrt2.cpp"), sep = "\n")
+cat("```\n")
 ```
 
 ### Checking our work
@@ -313,8 +336,9 @@ Now lets see if the distributions tighten up with our new functions. We should n
 ```{r}
 mvrtRc_dist <-  get_cor_dist(mvrt_R_c, 100, n, mu, S)
 mvrtRd_dist <-  get_cor_dist(mvrt_R_d, 100, n, mu, S)
+mvrt2_dist <-   get_cor_dist(mvrt2,    100, n, mu, S, n - 1, 0.05)
 
-if (identical(mvrtRc_dist, mvrtRd_dist)) {
+if (identical(mvrtRc_dist, mvrtRd_dist) && identical(mvrtRc_dist, mvrt2_dist)) {
   message("Distributions of correlation coefficients are identical")
 } else {
   message("Distributions of correlation coefficients are NOT identical")
@@ -341,17 +365,23 @@ Let's see how the functions compare in speed.
 
 ```{r}
 microbenchmark::microbenchmark(
+  # No data checks
   mvrt_R_a(n, mu, S),               # 'for' loop
   mvrt_R_b(n, mu, S),               # Optimized R code
-  mvrt_R_c(n, mu, S),               # Recursive call
-  mvrt_R_d(n, mu, S),               # 'while' loop
   mvrt(n, mu, S, n - 1),            # C++ code
+  
+  # Iterative checking
+  mvrt_R_c(n, mu, S),               # Recursive call
+  mvrt_R_d(n, mu, S),               # 'for' loop
+  mvrt2(n, mu, S, n - 1, 0.05),     # C++ code
+  
+  # Available packages on CRAN
   MASS::mvrnorm(n, mu, S),
   mvtnorm::rmvt(n, S, n - 1) + mu
 )
 ```
 
-I know the `::`{.r} operator has a performance cost. It may be interesting to try the benchmarking with loaded packages, too.
+I know the `::`{.r} operator has a performance cost for those CRAN packages. It may be interesting to try the benchmarking with loaded packages, too.
 
 ```{r}
 MASS_mvrnorm <- MASS::mvrnorm

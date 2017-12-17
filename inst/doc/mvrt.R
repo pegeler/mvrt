@@ -180,36 +180,54 @@ mvrt_R_c <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
 }
 
 
-# Using the while loop
-mvrt_R_d <- function(n, mu, S, df = n - 1, max.norm = 0.05, type.norm = "m") {
-  
+# Using the for loop
+mvrt_R_d <- function(
+  n,
+  mu,
+  S,
+  df = n - 1,
+  max_norm = 0.05,
+  max_iterations = 1000,
+  type_norm = "m")
+{
+
   g.t <- t(chol(S))
-  
-  accept_data <- FALSE
-  
+
   R_ref <- cov2cor(S)
-  
-  while (!accept_data) {
-    
+
+  for (iterations in seq_len(max_iterations)) {
+
     random_matrix <- matrix(rt(n*length(mu), df),nrow = length(mu))
     deviation <- g.t %*% random_matrix
-    
-    out <- t(mu + deviation)
-    
-    accept_data <- norm(R_ref - cor(out), type = type.norm) <= max.norm
-      
-  } 
-  
-  out
-  
+
+    if (norm(R_ref - cor(t(mu + deviation)), type = type_norm) <= max_norm)
+      return(t(mu + deviation))
+
+  }
+
+  stop(
+    "Correlation structure with max norm of ", max_norm,
+    " was not obtained in ", max_iterations, " iterations"
+    )
+
 }
 
+
+
+## ---- results='hide', message=FALSE--------------------------------------
+Rcpp::sourceCpp("../src/mvrt2.cpp")
+
+## ---- echo=FALSE, results="asis"-----------------------------------------
+cat("```c\n")
+cat(readLines("../src/mvrt2.cpp"), sep = "\n")
+cat("```\n")
 
 ## ------------------------------------------------------------------------
 mvrtRc_dist <-  get_cor_dist(mvrt_R_c, 100, n, mu, S)
 mvrtRd_dist <-  get_cor_dist(mvrt_R_d, 100, n, mu, S)
+mvrt2_dist <-   get_cor_dist(mvrt2,    100, n, mu, S, n - 1, 0.05)
 
-if (identical(mvrtRc_dist, mvrtRd_dist)) {
+if (identical(mvrtRc_dist, mvrtRd_dist) && identical(mvrtRc_dist, mvrt2_dist)) {
   message("Distributions of correlation coefficients are identical")
 } else {
   message("Distributions of correlation coefficients are NOT identical")
@@ -224,11 +242,17 @@ summary(get_cor_dist(mvrt_R_d, 100, n, mu, mvrt::convert_R2S(make_cor_mat(0.2),v
 
 ## ------------------------------------------------------------------------
 microbenchmark::microbenchmark(
+  # No data checks
   mvrt_R_a(n, mu, S),               # 'for' loop
   mvrt_R_b(n, mu, S),               # Optimized R code
-  mvrt_R_c(n, mu, S),               # Recursive call
-  mvrt_R_d(n, mu, S),               # 'while' loop
   mvrt(n, mu, S, n - 1),            # C++ code
+  
+  # Iterative checking
+  mvrt_R_c(n, mu, S),               # Recursive call
+  mvrt_R_d(n, mu, S),               # 'for' loop
+  mvrt2(n, mu, S, n - 1, 0.05),     # C++ code
+  
+  # Available packages on CRAN
   MASS::mvrnorm(n, mu, S),
   mvtnorm::rmvt(n, S, n - 1) + mu
 )

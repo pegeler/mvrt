@@ -16,8 +16,10 @@ arma::mat mvrt2(
   )
 {
 
-  arma::mat x(mu.size(), n);
+  // Cholesky decomp and transpose covariance matrix
   arma::mat g = chol(S).t();
+
+  // Get correlation matrix of user-input S matrix
   arma::mat V_sqrt_inv = diagmat(1 / sqrt(S.diag()));
   arma::mat target_cor = V_sqrt_inv * S * V_sqrt_inv;
 
@@ -25,13 +27,14 @@ arma::mat mvrt2(
   {
 
     // Generate the random data
-    for (int i=0; i < n; i++)
-    {
-      arma::vec rand = as<arma::vec>(rt(mu.size(),df));
-      x.col(i) = mu + g * rand;
-    }
+    arma::vec x_vec = as< arma::vec >( rt(mu.size() * n, df) );
+    arma::mat x = arma::mat( (const double*)x_vec.begin(), mu.size(), n );
 
-    // Compare to target
+    // Give the random data covariance structure and add mean offset
+    x = g * x;
+    x.each_col() += mu;
+
+    // Compare to target and retrun if meets specification
     arma::mat diff_matrix = abs(cor(x.t()) - target_cor);
 
     if (diff_matrix.max() <= max_norm) return x.t();
