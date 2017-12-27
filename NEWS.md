@@ -1,3 +1,9 @@
+Version 0.2.0
+==============
+
+- Made the `C++` code a little faster and cleaner.
+- Enhanced vignettes.
+
 Version 0.1.0
 ==============
 
