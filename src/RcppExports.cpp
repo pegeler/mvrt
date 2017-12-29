@@ -6,20 +6,6 @@
 
 using namespace Rcpp;
 
-// mvrt
-arma::mat mvrt(int n, arma::vec mu, arma::mat S, int df);
-RcppExport SEXP _mvrt_mvrt(SEXP nSEXP, SEXP muSEXP, SEXP SSEXP, SEXP dfSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< int >::type n(nSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
-    Rcpp::traits::input_parameter< arma::mat >::type S(SSEXP);
-    Rcpp::traits::input_parameter< int >::type df(dfSEXP);
-    rcpp_result_gen = Rcpp::wrap(mvrt(n, mu, S, df));
-    return rcpp_result_gen;
-END_RCPP
-}
 // mvrt2
 arma::mat mvrt2(int n, arma::vec mu, arma::mat S, int df, double max_norm, int max_iterations);
 RcppExport SEXP _mvrt_mvrt2(SEXP nSEXP, SEXP muSEXP, SEXP SSEXP, SEXP dfSEXP, SEXP max_normSEXP, SEXP max_iterationsSEXP) {
@@ -36,10 +22,24 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// mvrt
+arma::mat mvrt(int n, arma::vec mu, arma::mat S, int df);
+RcppExport SEXP _mvrt_mvrt(SEXP nSEXP, SEXP muSEXP, SEXP SSEXP, SEXP dfSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type n(nSEXP);
+    Rcpp::traits::input_parameter< arma::vec >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type S(SSEXP);
+    Rcpp::traits::input_parameter< int >::type df(dfSEXP);
+    rcpp_result_gen = Rcpp::wrap(mvrt(n, mu, S, df));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mvrt_mvrt", (DL_FUNC) &_mvrt_mvrt, 4},
     {"_mvrt_mvrt2", (DL_FUNC) &_mvrt_mvrt2, 6},
+    {"_mvrt_mvrt", (DL_FUNC) &_mvrt_mvrt, 4},
     {NULL, NULL, 0}
 };
 

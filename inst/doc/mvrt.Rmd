@@ -234,18 +234,13 @@ Why use the matrix norm rather than the determinant or some other measure? Becau
 To demonstrate, we will create a reference correlation matrix and then compare it to a set of contender matrices using the determinant and norm.
 
 ```{r}
-# Define a function for making a 2x2 correlation matrix
-make_cor_mat <- function (r) {  
-  out <- matrix(r, 2, 2)
-  diag(out) <- 1
-  out
-}
-
 # A single reference matrix
-R_ref <- make_cor_mat(.9)
+R_ref <- mvrt::make_cor_mat(.9)
+R_ref
 
 # A set of test matrices
-R_test <- lapply(seq(.5,1,.05), make_cor_mat)
+R_test <- lapply(seq(.5,1,.05), mvrt::make_cor_mat)
+R_test[[1]]
 
 # What does the determinant look like for the difference matrices?
 sapply(R_test, function(a,b) det(a - b), R_ref)
@@ -354,7 +349,15 @@ This appears to have worked. Compare with distributions explored in the previous
 We can also specify a different covariance structure and check again. This demonstrates the usage of the various function definitions we have created for this exercise.
 
 ```{r}
-summary(get_cor_dist(mvrt_R_d, 100, n, mu, mvrt::convert_R2S(make_cor_mat(0.2),var)))
+summary(
+  get_cor_dist(
+    mvrt_R_d, 
+    100, 
+    n, 
+    mu, 
+    mvrt::convert_R2S(mvrt::make_cor_mat(0.2),var)
+    )
+  )
 ```
 
 Not surprisingly, the correlation coefficients remain within [0.15,0.25].

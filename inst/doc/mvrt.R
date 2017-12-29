@@ -141,18 +141,13 @@ my_hist(MASS_dist)
 my_hist(mvtnorm_dist)
 
 ## ------------------------------------------------------------------------
-# Define a function for making a 2x2 correlation matrix
-make_cor_mat <- function (r) {  
-  out <- matrix(r, 2, 2)
-  diag(out) <- 1
-  out
-}
-
 # A single reference matrix
-R_ref <- make_cor_mat(.9)
+R_ref <- mvrt::make_cor_mat(.9)
+R_ref
 
 # A set of test matrices
-R_test <- lapply(seq(.5,1,.05), make_cor_mat)
+R_test <- lapply(seq(.5,1,.05), mvrt::make_cor_mat)
+R_test[[1]]
 
 # What does the determinant look like for the difference matrices?
 sapply(R_test, function(a,b) det(a - b), R_ref)
@@ -238,7 +233,15 @@ summary(mvrtRc_dist)
 my_hist(mvrtRc_dist)
 
 ## ------------------------------------------------------------------------
-summary(get_cor_dist(mvrt_R_d, 100, n, mu, mvrt::convert_R2S(make_cor_mat(0.2),var)))
+summary(
+  get_cor_dist(
+    mvrt_R_d, 
+    100, 
+    n, 
+    mu, 
+    mvrt::convert_R2S(mvrt::make_cor_mat(0.2),var)
+    )
+  )
 
 ## ------------------------------------------------------------------------
 microbenchmark::microbenchmark(
