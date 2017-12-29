@@ -12,7 +12,7 @@
 
 <meta name="author" content="Paul W. Egeler, MS, GStat" />
 
-<meta name="date" content="2017-12-28" />
+<meta name="date" content="2017-12-29" />
 
 <title>Exploring methods to create a multivariate t-distributed random matrix</title>
 
@@ -70,13 +70,14 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Exploring methods to create a multivariate t-distributed random matrix</h1>
 <h4 class="author"><em>Paul W. Egeler, MS, GStat</em></h4>
-<h4 class="date"><em>2017-12-28</em></h4>
+<h4 class="date"><em>2017-12-29</em></h4>
 
 
 
+<p><em>This document is part of the the <a href="https://github.com/pegeler/mvrt/"><code>mvrt</code> package</a>. See the <a href="https://github.com/pegeler/mvrt/blob/master/README.md">README.md</a> for more information on download and installation.</em></p>
 <div id="objective" class="section level2">
 <h2>Objective</h2>
-<p>The objective of this R Notebook is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as <code>MASS::mvrnorm</code> and <code>mvtnorm::rmvt</code>.</p>
+<p>The objective of this R package vignette is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as <code>MASS::mvrnorm</code> and <code>mvtnorm::rmvt</code>.</p>
 <p>The matrices are compared using summary statistics and graphics (histograms). The distributions are assessed for “believability”. Methods are also explored for ensuring that the specified correlation/covariance structure is preserved, despite the random process of number generation. Finally, benchmarking is perfromed to determine performance differences.</p>
 </div>
 <div id="setup" class="section level2">
@@ -472,23 +473,23 @@ if (<span class="kw">identical</span>(mvrtRc_dist, mvrtRd_dist) &amp;&amp;<span 
 )</code></pre></div>
 <pre><code>## Unit: microseconds
 ##                             expr     min       lq      mean   median
-##               mvrt_R_a(n, mu, S)  71.763  78.4055 105.84242  81.0035
-##               mvrt_R_b(n, mu, S)  20.385  23.6885  25.74771  25.1460
-##            mvrt(n, mu, S, n - 1)   8.801  11.5545  12.68110  12.7570
-##               mvrt_R_c(n, mu, S)  46.677  55.3250  69.67144  61.0070
-##               mvrt_R_d(n, mu, S)  54.277  60.6520  71.63624  64.9675
-##     mvrt2(n, mu, S, n - 1, 0.05)   9.864  13.7645  15.98673  15.2185
-##          MASS::mvrnorm(n, mu, S)  51.577  62.7740  66.69880  65.1285
-##  mvtnorm::rmvt(n, S, n - 1) + mu 198.838 210.6765 218.83951 216.3805
+##               mvrt_R_a(n, mu, S)  72.718  78.5400 122.61516  83.8850
+##               mvrt_R_b(n, mu, S)  19.886  23.9850  27.10175  25.5405
+##            mvrt(n, mu, S, n - 1)   9.381  11.8705  13.20221  13.1005
+##               mvrt_R_c(n, mu, S)  47.630  54.0700  71.34679  60.9655
+##               mvrt_R_d(n, mu, S)  52.594  59.0750  72.64390  66.7035
+##     mvrt2(n, mu, S, n - 1, 0.05)   9.681  14.1485  17.04003  15.5245
+##          MASS::mvrnorm(n, mu, S)  51.994  62.3000  67.84426  65.8680
+##  mvtnorm::rmvt(n, S, n - 1) + mu 200.643 210.6800 221.45511 215.2740
 ##        uq      max neval
-##   84.2415 2476.839   100
-##   27.4785   57.726   100
-##   13.7375   23.213   100
-##   65.2185  179.551   100
-##   69.3465  186.572   100
-##   16.9940   29.162   100
-##   66.8050  186.129   100
-##  220.7980  313.909   100</code></pre>
+##   88.6795 3943.055   100
+##   28.9940   92.209   100
+##   14.2555   19.877   100
+##   65.9170  181.545   100
+##   75.5140  168.482   100
+##   18.1860   40.701   100
+##   68.2485  115.516   100
+##  222.7995  308.530   100</code></pre>
 <p>I know the <code class="sourceCode r">::</code> operator has a performance cost for those CRAN packages. It may be interesting to try the benchmarking with loaded packages, too.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">MASS_mvrnorm &lt;-<span class="st"> </span>MASS::mvrnorm
 mvtnorm_rmvt &lt;-<span class="st"> </span>mvtnorm::rmvt
@@ -501,15 +502,15 @@ microbenchmark::<span class="kw">microbenchmark</span>(
 )</code></pre></div>
 <pre><code>## Unit: microseconds
 ##                             expr     min       lq      mean   median
-##          MASS::mvrnorm(n, mu, S)  48.993  55.6395  61.25040  61.0465
-##           MASS_mvrnorm(n, mu, S)  42.129  47.2630  52.46569  52.8160
-##  mvtnorm::rmvt(n, S, n - 1) + mu 192.037 196.9500 208.88180 206.2045
-##   mvtnorm_rmvt(n, S, n - 1) + mu 182.917 191.8525 202.00009 196.0885
-##       uq     max neval
-##   64.314 148.358   100
-##   56.307  66.499   100
-##  212.996 280.161   100
-##  206.092 245.365   100</code></pre>
+##          MASS::mvrnorm(n, mu, S)  49.227  55.4755  62.03105  60.1160
+##           MASS_mvrnorm(n, mu, S)  42.219  47.9630  52.49261  53.3055
+##  mvtnorm::rmvt(n, S, n - 1) + mu 192.175 200.6375 209.81320 208.6435
+##   mvtnorm_rmvt(n, S, n - 1) + mu 184.609 191.1385 199.35203 198.2930
+##        uq     max neval
+##   63.9995 196.735   100
+##   57.0505  65.518   100
+##  213.2515 349.542   100
+##  205.5310 224.457   100</code></pre>
 </div>
 <div id="conclusion" class="section level2">
 <h2>Conclusion</h2>

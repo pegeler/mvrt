@@ -13,11 +13,14 @@ vignette: >
 knitr::opts_chunk$set(fig.width = 6, fig.height = 4, fig.align = 'center')
 ```
 
+*This document is part of the the [`mvrt` package](https://github.com/pegeler/mvrt/). See the [README.md](https://github.com/pegeler/mvrt/blob/master/README.md) for more information on download and installation.*
+
 ## Objective
 
-The objective of this R Notebook is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as `MASS::mvrnorm` and `mvtnorm::rmvt`.
+The objective of this R package vignette is to investigate the various ways of creating multivariate normal/t distributions. An algorithm using Cholesky decomposition is used; first in R code, then in C++ code. This is compared to existing methods for creating multivariate random matrices, such as `MASS::mvrnorm` and `mvtnorm::rmvt`.
 
 The matrices are compared using summary statistics and graphics (histograms). The distributions are assessed for "believability". Methods are also explored for ensuring that the specified correlation/covariance structure is preserved, despite the random process of number generation. Finally, benchmarking is perfromed to determine performance differences.
+
 
 ## Setup
 
