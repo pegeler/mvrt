@@ -4,7 +4,7 @@
 
 This package provides random matrices with a defined covariance structure. The package began as an exercise to show performance improvements of using vectorized R code rather than explicit `for` loops. Later, it became a vehicle for working with the [`Rcpp`](https://cran.r-project.org/package=Rcpp) and [`RcppArmadillo`](https://cran.r-project.org/package=RcppArmadillo) packages and learning how to incorporate them into packages of my own. Future work may include `FORTRAN` code to further explore the capabilities of using compiled code in R scripts and packages.
 
-You can see an exploration the thought process just described in the [package vignette](https://pegeler.github.io/mvrt/). Different methods for function definitions are used and performance is assessed.
+You can see an exploration the thought process just described in the [package vignette](https://pegeler.github.io/mvrt/articles/mvrt.html). Different methods for function definitions are used and performance is assessed.
 
 ## Example Usage
 
