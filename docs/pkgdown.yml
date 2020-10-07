@@ -1,6 +1,7 @@
-pandoc: 1.19.2.1
-pkgdown: 0.1.0.9000
-pkgdown_sha: ba364393708b38fd6368f1d089586e54df3e1948
+pandoc: 2.3.1
+pkgdown: 1.6.1
+pkgdown_sha: ~
 articles:
   mvrt: mvrt.html
+last_built: 2020-10-07T01:10Z
 

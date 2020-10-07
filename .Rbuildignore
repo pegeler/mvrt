@@ -2,3 +2,5 @@
 ^\.Rproj\.user$
 ^docs$
 ^Rbuildignore$
+^doc$
+^Meta$

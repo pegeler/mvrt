@@ -3,13 +3,13 @@
 
 #' @rdname mvrt
 #' @export
-mvrt2 <- function(n, mu, S, df = 1L, max_norm = 2, max_iterations = 1000L) {
-    .Call('_mvrt_mvrt2', PACKAGE = 'mvrt', n, mu, S, df, max_norm, max_iterations)
+mvrt <- function(n, mu, S, df = 1L) {
+    .Call('_mvrt_mvrt', PACKAGE = 'mvrt', n, mu, S, df)
 }
 
 #' @rdname mvrt
 #' @export
-mvrt <- function(n, mu, S, df = 1L) {
-    .Call('_mvrt_mvrt', PACKAGE = 'mvrt', n, mu, S, df)
+mvrt2 <- function(n, mu, S, df = 1L, max_norm = 2, max_iterations = 1000L) {
+    .Call('_mvrt_mvrt2', PACKAGE = 'mvrt', n, mu, S, df, max_norm, max_iterations)
 }
 

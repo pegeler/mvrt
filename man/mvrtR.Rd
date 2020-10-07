@@ -4,8 +4,15 @@
 \alias{mvrtR}
 \title{Create a multivariate t-distributed random matrix}
 \usage{
-mvrtR(n, mu, S, df = n - 1, max_norm = 2, max_iterations = 1000,
-  type_norm = "m")
+mvrtR(
+  n,
+  mu,
+  S,
+  df = n - 1,
+  max_norm = 2,
+  max_iterations = 1000,
+  type_norm = "m"
+)
 }
 \arguments{
 \item{n}{Number of observations}

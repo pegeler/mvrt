@@ -13,8 +13,8 @@ arma::mat mvrt(int n, arma::vec mu, arma::mat S, int df=1)
   arma::mat g = chol(S).t();
 
   // Generate the random data
-  arma::vec x_vec = as< arma::vec >( rt(mu.size() * n, df) );
-  arma::mat x = arma::mat( (const double*)x_vec.begin(), mu.size(), n );
+  auto x_vec = rt(mu.size() * n, df);
+  arma::mat x = arma::mat(&x_vec[0], mu.size(), n, false, true);
 
   // Give the random data covariance structure and add mean offset
   x = g * x;
@@ -22,3 +22,4 @@ arma::mat mvrt(int n, arma::vec mu, arma::mat S, int df=1)
 
   return x.t();
 }
+

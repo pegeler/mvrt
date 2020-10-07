@@ -23,12 +23,11 @@ arma::mat mvrt2(
   arma::mat V_sqrt_inv = diagmat(1 / sqrt(S.diag()));
   arma::mat target_cor = V_sqrt_inv * S * V_sqrt_inv;
 
-  for (int iteration=0; iteration < max_iterations; iteration++)
-  {
+  for (int iteration=0; iteration < max_iterations; iteration++) {
 
     // Generate the random data
-    arma::vec x_vec = as< arma::vec >( rt(mu.size() * n, df) );
-    arma::mat x = arma::mat( (const double*)x_vec.begin(), mu.size(), n );
+    auto x_vec = rt(mu.size() * n, df);
+    arma::mat x = arma::mat(&x_vec[0], mu.size(), n, false, true);
 
     // Give the random data covariance structure and add mean offset
     x = g * x;
@@ -37,8 +36,8 @@ arma::mat mvrt2(
     // Compare to target and retrun if meets specification
     arma::mat diff_matrix = abs(cor(x.t()) - target_cor);
 
-    if (diff_matrix.max() <= max_norm) return x.t();
-
+    if (diff_matrix.max() <= max_norm)
+      return x.t();
   }
 
   stop(
